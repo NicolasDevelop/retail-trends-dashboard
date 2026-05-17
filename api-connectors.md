@@ -28,6 +28,13 @@ En este proyecto el token se lee desde:
 MELI_ACCESS_TOKEN
 ```
 
+Si `MELI_ACCESS_TOKEN` no existe, el backend intenta generar un token con:
+
+```txt
+MELI_CLIENT_ID
+MELI_CLIENT_SECRET
+```
+
 Este proyecto incluye dos endpoints para Vercel:
 
 ```txt

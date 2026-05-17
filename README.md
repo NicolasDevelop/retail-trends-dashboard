@@ -41,7 +41,7 @@ Endpoints disponibles:
 - `/api/auth/start`
 - `/api/auth/callback`
 
-Mercado Libre puede responder `403` sin autenticacion. Configura `MELI_ACCESS_TOKEN` como variable de entorno en Vercel antes de usar datos reales.
+Mercado Libre puede responder `403` sin autenticacion. La API intenta usar `MELI_ACCESS_TOKEN`; si no existe, intenta generar un token con `MELI_CLIENT_ID` y `MELI_CLIENT_SECRET`.
 
 Variables de entorno:
 
@@ -49,7 +49,7 @@ Variables de entorno:
 MELI_CLIENT_ID=client_id_de_tu_app
 MELI_CLIENT_SECRET=client_secret_de_tu_app
 MELI_REDIRECT_URI=https://retail-trends-dashboard.vercel.app/api/auth/callback
-MELI_ACCESS_TOKEN=tu_access_token_de_mercado_libre
+MELI_ACCESS_TOKEN=opcional_si_ya_generaste_un_token_oauth
 ```
 
 Flujo para obtener token:

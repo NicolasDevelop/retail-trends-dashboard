@@ -1,3 +1,5 @@
+import { getMeliHeaders } from "./lib/meli.js";
+
 const SITE_IDS = new Set(["MLA", "MLB", "MLC", "MCO", "MLM", "MPE", "MLU"]);
 
 const SITE_NAMES = {
@@ -26,17 +28,9 @@ function getTrendUrl(trend, site, keyword) {
   return `https://listado.mercadolibre.cl/${encodeURIComponent(keyword)}`;
 }
 
-function getHeaders() {
-  const headers = {};
-  if (process.env.MELI_ACCESS_TOKEN) {
-    headers.Authorization = `Bearer ${process.env.MELI_ACCESS_TOKEN}`;
-  }
-  return headers;
-}
-
 async function fetchJson(url) {
   const response = await fetch(url, {
-    headers: getHeaders(),
+    headers: await getMeliHeaders(),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
@@ -159,7 +153,7 @@ export default async function handler(request, response) {
       detail: error.message,
       message:
         error.status === 403
-          ? "Mercado Libre rechazo la consulta. Configura MELI_ACCESS_TOKEN en Vercel."
+          ? "Mercado Libre rechazo la consulta. Revisa MELI_CLIENT_ID, MELI_CLIENT_SECRET o MELI_ACCESS_TOKEN en Vercel."
           : "No se pudo consultar Mercado Libre en este momento.",
     });
   }
