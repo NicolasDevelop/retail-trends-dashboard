@@ -1,4 +1,5 @@
 let products = [];
+const DATA_VERSION = "shopping-v1";
 
 const state = {
   query: "",
@@ -315,7 +316,7 @@ async function loadProducts() {
   render();
 
   try {
-    const response = await fetch("/api/products?site=MLC&limit=12");
+    const response = await fetch(`/api/products?site=MLC&limit=12&v=${DATA_VERSION}`);
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
       throw new Error(payload.message || payload.detail || `La API respondio con estado ${response.status}.`);
