@@ -1,92 +1,256 @@
 # Retail Trends Radar
 
-Dashboard para explorar productos tendencia reales desde Mercado Libre, filtrar oportunidades de retail y calcular utilidad estimada por producto.
+Dashboard para detectar productos tendencia en retail usando datos reales de Mercado Libre y enriquecimiento opcional de Google Shopping via SerpApi.
 
-## Funciones
+## Estado actual
 
-- Ranking de productos generado desde Mercado Libre Trends + Search.
-- Enriquecimiento con publicaciones, precios, envio gratis, seller y reputacion cuando Mercado Libre lo permite.
-- Enriquecimiento opcional con Google Shopping via SerpApi cuando Mercado Libre bloquea Search.
-- Filtros por busqueda, categoria, canal y score minimo.
-- Senales de tendencia por crecimiento de demanda.
-- Vista de oportunidades por categoria.
-- Calculadora de utilidad con costo, fee y envio.
-- Exportacion CSV.
-- Proxy serverless para consultar Mercado Libre sin exponer credenciales en el frontend.
-- Fallback tolerante: si un endpoint de enriquecimiento falla, el dashboard conserva tendencias disponibles.
+El proyecto esta funcionando en Vercel con este flujo:
 
-## Ejecutar localmente
+- Mercado Libre Trends entrega tendencias reales para Chile (`MLC`).
+- Mercado Libre Search esta bloqueado para esta app/token (`403`), por lo que no se usa como fuente confiable de precios.
+- SerpApi Google Shopping enriquece las primeras 6 tendencias con precio, tienda, rating, reviews y rango de precios.
+- Las tendencias restantes quedan como `Mercado Libre Trends` y muestran `Sin detalle` en campos comerciales.
+- El dashboard mantiene fallback: si una fuente falla, conserva los datos disponibles en vez de romper la pantalla.
 
-La interfaz puede abrirse localmente, pero los datos reales requieren las funciones `/api/*`, por lo que el modo recomendado es Vercel.
+## Fuentes de datos
 
-Tambien puedes servirlo con cualquier servidor estatico:
+### Mercado Libre
 
-```bash
-python -m http.server 8080
-```
-
-Luego visita `http://localhost:8080`.
-
-## Deploy
-
-### GitHub Pages
-
-No recomendado para la version con datos reales. GitHub Pages no ejecuta `api/products.js`.
-
-### Vercel
-
-Recomendado. No requiere build command.
-
-Endpoints disponibles:
-
-- `/api/trends?site=MLC`
-- `/api/products?site=MLC&limit=12`
-- `/api/auth/start`
-- `/api/auth/callback`
-- `/api/auth/refresh`
-- `/api/debug/meli`
-- `/api/notifications`
-
-Mercado Libre puede responder `403` sin autenticacion. La API intenta usar `MELI_ACCESS_TOKEN`; si no existe, intenta generar un token con `MELI_CLIENT_ID` y `MELI_CLIENT_SECRET`.
-
-Variables de entorno:
+Usado para demanda/tendencias:
 
 ```txt
-MELI_CLIENT_ID=client_id_de_tu_app
-MELI_CLIENT_SECRET=client_secret_de_tu_app
-MELI_REDIRECT_URI=https://retail-trends-dashboard.vercel.app/api/auth/callback
-MELI_ACCESS_TOKEN=opcional_si_ya_generaste_un_token_oauth
-MELI_REFRESH_TOKEN=refresh_token_generado_por_oauth
-MELI_TOKEN_EXPIRES_AT=fecha_iso_informativa
-SERPAPI_API_KEY=opcional_para_enriquecer_precios_desde_google_shopping
+GET /api/trends?site=MLC
+GET /api/products?site=MLC&limit=12
 ```
 
-Flujo para obtener token:
+Internamente consulta:
 
-1. En Mercado Libre Developers configura Redirect URI:
-   `https://retail-trends-dashboard.vercel.app/api/auth/callback`
-2. En Vercel agrega `MELI_CLIENT_ID`, `MELI_CLIENT_SECRET` y `MELI_REDIRECT_URI`.
-3. Haz redeploy.
-4. Abre `/api/auth/start`.
-5. Autoriza la app.
-6. Copia `MELI_ACCESS_TOKEN` desde la pantalla de callback a Vercel.
-7. Haz redeploy nuevamente.
+```txt
+https://api.mercadolibre.com/trends/MLC
+https://api.mercadolibre.com/categories/{CATEGORY_ID}
+https://api.mercadolibre.com/users/me
+```
 
-Renovar token:
+Mercado Libre Search:
 
-1. Abre `/api/auth/refresh`.
-2. Copia `MELI_ACCESS_TOKEN`, `MELI_REFRESH_TOKEN` y `MELI_TOKEN_EXPIRES_AT`.
-3. Actualiza esas variables en Vercel.
-4. Haz redeploy.
+```txt
+https://api.mercadolibre.com/sites/MLC/search?q=...
+```
 
-La API tambien intenta refrescar automaticamente cuando Mercado Libre responde 401 o 403. En serverless no puede guardar variables de entorno por si sola, asi que el endpoint `/api/auth/refresh` sirve para actualizar Vercel manualmente cuando sea necesario.
+Actualmente responde `403` con este token/app, por eso el proyecto usa SerpApi para precios.
 
-## Proximos pasos
+### SerpApi Google Shopping
 
-1. Guardar snapshots diarios o semanales en una base simple.
-2. Calcular crecimiento real comparando snapshots.
-3. Agregar un conector para Google Shopping via SerpApi o DataForSEO.
-4. Agregar alertas por productos nuevos o crecimiento alto.
+Usado para enriquecer tendencias cuando Mercado Libre no entrega publicaciones:
+
+```txt
+https://serpapi.com/search?engine=google_shopping
+```
+
+Variable requerida:
+
+```txt
+SERPAPI_API_KEY
+```
+
+Para cuidar cuota, el proyecto enriquece hasta 6 tendencias por request:
+
+```txt
+SHOPPING_ENRICH_LIMIT = 6
+```
+
+## Funciones del dashboard
+
+- Ranking de productos tendencia.
+- Filtros por busqueda, categoria, canal y score minimo.
+- Senales de demanda.
+- Vista de oportunidades por categoria.
+- Precios desde Google Shopping cuando estan disponibles.
+- Rango de precios: minimo, promedio y maximo.
+- Tienda/seller principal.
+- Rating y reviews cuando la fuente los entrega.
+- Calculadora de utilidad con precio, costo, fee y envio.
+- Exportacion CSV.
+- Diagnostico de APIs.
+- OAuth con Mercado Libre.
+- Renovacion manual/asistida de token.
+
+## Deploy recomendado
+
+Usar Vercel.
+
+Configuracion:
+
+```txt
+Framework Preset: Other
+Root Directory: ./
+Build Command: vacio
+Output Directory: vacio
+Install Command: vacio
+```
+
+GitHub Pages no es recomendado para la version real porque no ejecuta funciones `/api/*`.
+
+## Variables de entorno
+
+Configurar en Vercel:
+
+```txt
+MELI_CLIENT_ID=client_id_de_mercado_libre
+MELI_CLIENT_SECRET=client_secret_de_mercado_libre
+MELI_REDIRECT_URI=https://retail-trends-dashboard.vercel.app/api/auth/callback
+MELI_ACCESS_TOKEN=access_token_generado_por_oauth
+MELI_REFRESH_TOKEN=refresh_token_generado_por_oauth
+MELI_TOKEN_EXPIRES_AT=fecha_iso_informativa
+SERPAPI_API_KEY=api_key_de_serpapi
+```
+
+`MELI_TOKEN_EXPIRES_AT` es informativa. La app no depende de ella para funcionar.
+
+## OAuth Mercado Libre
+
+Redirect URI configurada:
+
+```txt
+https://retail-trends-dashboard.vercel.app/api/auth/callback
+```
+
+Flujo:
+
+1. Crear app en Mercado Libre Developers.
+2. Configurar la Redirect URI anterior.
+3. Configurar `MELI_CLIENT_ID`, `MELI_CLIENT_SECRET` y `MELI_REDIRECT_URI` en Vercel.
+4. Hacer redeploy.
+5. Abrir:
+
+```txt
+https://retail-trends-dashboard.vercel.app/api/auth/start
+```
+
+6. Autorizar la app.
+7. Copiar `MELI_ACCESS_TOKEN` y `MELI_REFRESH_TOKEN` desde la pantalla de callback.
+8. Pegarlos en Vercel.
+9. Hacer redeploy.
+
+## Renovar token
+
+El access token de Mercado Libre expira. Para renovarlo:
+
+```txt
+https://retail-trends-dashboard.vercel.app/api/auth/refresh
+```
+
+Luego copiar a Vercel:
+
+```txt
+MELI_ACCESS_TOKEN=...
+MELI_REFRESH_TOKEN=...
+MELI_TOKEN_EXPIRES_AT=...
+```
+
+Y hacer redeploy.
+
+La API tambien intenta refrescar el token durante una request si Mercado Libre responde `401` o `403`, pero una funcion serverless no puede guardar variables de entorno de forma permanente. Por eso existe `/api/auth/refresh`.
+
+## Endpoints
+
+```txt
+GET /api/products?site=MLC&limit=12
+GET /api/trends?site=MLC
+GET /api/debug/meli
+GET /api/auth/start
+GET /api/auth/callback
+GET /api/auth/refresh
+GET|POST /api/notifications
+```
+
+### Diagnostico
+
+Abrir:
+
+```txt
+https://retail-trends-dashboard.vercel.app/api/debug/meli
+```
+
+Respuesta esperada:
+
+```json
+{
+  "env": {
+    "hasClientId": true,
+    "hasClientSecret": true,
+    "hasAccessToken": true,
+    "hasRefreshToken": true,
+    "hasRedirectUri": true,
+    "hasSerpApiKey": true
+  },
+  "checks": {
+    "user": { "status": 200 },
+    "trends": { "status": 200 },
+    "search": { "status": 403 },
+    "category": { "status": 200 }
+  }
+}
+```
+
+`search: 403` es una restriccion de Mercado Libre para este endpoint/app. El sistema lo compensa con SerpApi.
+
+## Diagnostico de productos
+
+`/api/products` devuelve un bloque `diagnostics`:
+
+```json
+{
+  "trends": 12,
+  "enriched": 0,
+  "googleShopping": 6,
+  "trendOnly": 6,
+  "searchLimit": 5,
+  "shoppingEnrichLimit": 6,
+  "hasSerpApiKey": true
+}
+```
+
+Significado:
+
+- `trends`: tendencias reales obtenidas desde Mercado Libre.
+- `enriched`: productos enriquecidos por Mercado Libre Search.
+- `googleShopping`: tendencias enriquecidas por SerpApi Google Shopping.
+- `trendOnly`: tendencias sin precio/detalle comercial.
+- `hasSerpApiKey`: confirma si Vercel tiene `SERPAPI_API_KEY`.
+
+## Cache
+
+El frontend llama:
+
+```txt
+/api/products?site=MLC&limit=12&v=shopping-v1
+```
+
+Ese parametro evita que el navegador/Vercel mantenga una respuesta antigua despues de cambios importantes.
+
+Para probar manualmente una respuesta fresca:
+
+```txt
+https://retail-trends-dashboard.vercel.app/api/products?site=MLC&limit=12&t=prueba1
+```
+
+## Rollback
+
+Antes del enriquecimiento se dejo un tag remoto:
+
+```txt
+rollback-before-enrichment
+```
+
+Para volver a ese estado:
+
+```bash
+git reset --hard rollback-before-enrichment
+git push --force
+```
+
+Usar solo si la version enriquecida falla y se quiere volver al estado Mercado Libre Trends + OAuth.
 
 ## Estructura
 
@@ -96,10 +260,26 @@ retail-trends-dashboard/
   styles.css
   app.js
   api-connectors.md
-  api/products.js
-  api/trends.js
-  api/auth/start.js
-  api/auth/callback.js
-  api/auth/refresh.js
+  vercel.json
+  api/
+    products.js
+    trends.js
+    notifications.js
+    debug/
+      meli.js
+    lib/
+      meli.js
+    auth/
+      start.js
+      callback.js
+      refresh.js
   README.md
 ```
+
+## Proximos pasos
+
+- Guardar snapshots diarios/semanales para medir crecimiento real.
+- Agregar base de datos para historico.
+- Subir `SHOPPING_ENRICH_LIMIT` si hay suficiente cuota SerpApi.
+- Agregar DataForSEO como segunda alternativa de precios.
+- Crear alertas para tendencias nuevas o cambios fuertes de precio.
