@@ -19,6 +19,9 @@
     },
     "api/debug/meli.js": {
       "maxDuration": 10
+    },
+    "api/notifications.js": {
+      "maxDuration": 10
     }
   }
 }

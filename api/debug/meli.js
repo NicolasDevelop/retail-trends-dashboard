@@ -6,9 +6,12 @@ async function check(url) {
       headers: await getMeliHeaders(),
       signal: AbortSignal.timeout(8000),
     });
+    const payload = await response.json().catch(() => ({}));
     return {
       ok: response.ok,
       status: response.status,
+      message: payload.message || payload.error || null,
+      sampleKeys: payload && typeof payload === "object" ? Object.keys(payload).slice(0, 8) : [],
     };
   } catch (error) {
     return {
@@ -29,8 +32,10 @@ export default async function handler(request, response) {
       hasRedirectUri: Boolean(process.env.MELI_REDIRECT_URI),
     },
     checks: {
+      user: await check("https://api.mercadolibre.com/users/me"),
       trends: await check("https://api.mercadolibre.com/trends/MLC"),
       search: await check("https://api.mercadolibre.com/sites/MLC/search?q=notebook&limit=1"),
+      category: await check("https://api.mercadolibre.com/categories/MLC1648"),
     },
   });
 }
