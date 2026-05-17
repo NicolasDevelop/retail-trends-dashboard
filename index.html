@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Retail Trends Radar</title>
+    <link rel="preconnect" href="https://images.unsplash.com">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand">
+          <span class="brand-mark">RT</span>
+          <div>
+            <strong>Retail Trends Radar</strong>
+            <span>Mercado, precios y demanda</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Secciones">
+          <a class="active" href="#overview">Resumen</a>
+          <a href="#products">Productos</a>
+          <a href="#signals">Senales</a>
+          <a href="#sources">Fuentes</a>
+        </nav>
+
+        <section class="source-card" id="sources">
+          <h2>Conectores</h2>
+          <p>Demo local lista para conectar con APIs mediante un proxy serverless.</p>
+          <div class="source-status">
+            <span class="dot active"></span>
+            Dataset demo activo
+          </div>
+          <div class="source-status">
+            <span class="dot"></span>
+            Mercado Libre API-ready
+          </div>
+          <div class="source-status">
+            <span class="dot"></span>
+            Google Shopping API-ready
+          </div>
+        </section>
+      </aside>
+
+      <main class="dashboard">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Chile retail intelligence</p>
+            <h1>Radar de productos tendencia</h1>
+          </div>
+          <div class="actions">
+            <button class="icon-button" id="refreshButton" type="button" title="Actualizar datos" aria-label="Actualizar datos">
+              <span aria-hidden="true">R</span>
+            </button>
+            <button class="primary-button" id="exportButton" type="button">Exportar CSV</button>
+          </div>
+        </header>
+
+        <section class="filters" aria-label="Filtros de productos">
+          <label>
+            Buscar
+            <input id="searchInput" type="search" placeholder="Notebook, cafetera, skincare...">
+          </label>
+          <label>
+            Categoria
+            <select id="categoryFilter"></select>
+          </label>
+          <label>
+            Canal
+            <select id="channelFilter"></select>
+          </label>
+          <label>
+            Score minimo
+            <input id="scoreFilter" type="range" min="0" max="100" value="35">
+            <span id="scoreValue">35</span>
+          </label>
+        </section>
+
+        <section class="metrics" id="overview" aria-label="Indicadores principales">
+          <article>
+            <span>Productos filtrados</span>
+            <strong id="metricProducts">0</strong>
+          </article>
+          <article>
+            <span>Score promedio</span>
+            <strong id="metricScore">0</strong>
+          </article>
+          <article>
+            <span>Precio medio</span>
+            <strong id="metricPrice">$0</strong>
+          </article>
+          <article>
+            <span>Crecimiento medio</span>
+            <strong id="metricGrowth">0%</strong>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <section class="panel trend-panel" id="signals">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Trending topic</p>
+                <h2>Senales de demanda</h2>
+              </div>
+              <span id="updatedAt"></span>
+            </div>
+            <div class="signal-list" id="signalList"></div>
+          </section>
+
+          <section class="panel chart-panel" aria-label="Distribucion por categoria">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Mix de categorias</p>
+                <h2>Oportunidades por vertical</h2>
+              </div>
+            </div>
+            <div class="bars" id="categoryBars"></div>
+          </section>
+        </section>
+
+        <section class="panel table-panel" id="products">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Ranking operativo</p>
+              <h2>Productos detectados</h2>
+            </div>
+            <span id="resultCount"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Categoria</th>
+                  <th>Canal</th>
+                  <th>Precio</th>
+                  <th>Demanda</th>
+                  <th>Utilidad</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody id="productRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel utility-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Utilidades</p>
+              <h2>Calculadora rapida</h2>
+            </div>
+          </div>
+          <div class="calculator">
+            <label>
+              Precio venta
+              <input id="salePrice" type="number" min="0" value="59990">
+            </label>
+            <label>
+              Costo producto
+              <input id="costPrice" type="number" min="0" value="36000">
+            </label>
+            <label>
+              Fee marketplace %
+              <input id="feeRate" type="number" min="0" max="100" value="13">
+            </label>
+            <label>
+              Envio / packing
+              <input id="shippingCost" type="number" min="0" value="3500">
+            </label>
+            <output id="profitOutput"></output>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
