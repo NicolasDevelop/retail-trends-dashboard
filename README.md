@@ -6,6 +6,7 @@ Dashboard para explorar productos tendencia reales desde Mercado Libre, filtrar 
 
 - Ranking de productos generado desde Mercado Libre Trends + Search.
 - Enriquecimiento con publicaciones, precios, envio gratis, seller y reputacion cuando Mercado Libre lo permite.
+- Enriquecimiento opcional con Google Shopping via SerpApi cuando Mercado Libre bloquea Search.
 - Filtros por busqueda, categoria, canal y score minimo.
 - Senales de tendencia por crecimiento de demanda.
 - Vista de oportunidades por categoria.
@@ -57,6 +58,7 @@ MELI_REDIRECT_URI=https://retail-trends-dashboard.vercel.app/api/auth/callback
 MELI_ACCESS_TOKEN=opcional_si_ya_generaste_un_token_oauth
 MELI_REFRESH_TOKEN=refresh_token_generado_por_oauth
 MELI_TOKEN_EXPIRES_AT=fecha_iso_informativa
+SERPAPI_API_KEY=opcional_para_enriquecer_precios_desde_google_shopping
 ```
 
 Flujo para obtener token:

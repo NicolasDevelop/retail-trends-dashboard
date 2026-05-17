@@ -30,6 +30,7 @@ export default async function handler(request, response) {
       hasAccessToken: Boolean(process.env.MELI_ACCESS_TOKEN),
       hasRefreshToken: Boolean(process.env.MELI_REFRESH_TOKEN),
       hasRedirectUri: Boolean(process.env.MELI_REDIRECT_URI),
+      hasSerpApiKey: Boolean(process.env.SERPAPI_API_KEY),
     },
     checks: {
       user: await check("https://api.mercadolibre.com/users/me"),

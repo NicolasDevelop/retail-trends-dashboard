@@ -14,6 +14,7 @@ const SITE_NAMES = {
 
 const REQUEST_TIMEOUT_MS = 8000;
 const SEARCH_LIMIT = 5;
+const SHOPPING_ENRICH_LIMIT = 6;
 const FALLBACK_KEYWORDS = [
   "freidora de aire",
   "notebook",
@@ -132,6 +133,29 @@ async function safeFetchJson(url) {
   }
 }
 
+async function fetchSerpApiShopping(keyword) {
+  if (!process.env.SERPAPI_API_KEY) return null;
+
+  const url = new URL("https://serpapi.com/search");
+  url.searchParams.set("engine", "google_shopping");
+  url.searchParams.set("q", keyword);
+  url.searchParams.set("gl", "cl");
+  url.searchParams.set("hl", "es");
+  url.searchParams.set("google_domain", "google.cl");
+  url.searchParams.set("api_key", process.env.SERPAPI_API_KEY);
+
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || payload.error) {
+    return null;
+  }
+
+  return Array.isArray(payload.shopping_results) ? payload.shopping_results.slice(0, SEARCH_LIMIT) : [];
+}
+
 async function enrichSearchEntry(site, entry, data) {
   const results = Array.isArray(data.results) ? data.results.slice(0, SEARCH_LIMIT) : [];
   const item = results[0] || null;
@@ -190,6 +214,48 @@ function buildTrendOnlyProduct({ site, trend, keyword, rank }) {
     itemIds: [],
     url: getTrendUrl(trend, site, keyword),
     signal: `Tendencia #${rank} detectada por Mercado Libre. Search no entrego detalle de publicaciones.`,
+  };
+}
+
+function buildShoppingProduct({ site, trend, keyword, rank, shoppingResults }) {
+  const prices = shoppingResults
+    .map((item) => Number(item.extracted_price || item.price || 0))
+    .filter((price) => price > 0);
+  const avgPrice = Math.round(average(prices));
+  const minPrice = prices.length ? Math.min(...prices) : 0;
+  const maxPrice = prices.length ? Math.max(...prices) : 0;
+  const first = shoppingResults[0] || {};
+  const freeShipping = shoppingResults.filter((item) =>
+    String(item.delivery || item.shipping || "").toLowerCase().includes("gratis"),
+  ).length;
+  const freeShippingRate = shoppingResults.length ? Math.round((freeShipping / shoppingResults.length) * 100) : 0;
+  const demand = clamp(100 - rank * 4, 48, 96);
+  const growth = clamp(60 - rank * 2, 12, 92);
+  const margin = estimateMargin(avgPrice);
+  const score = clamp(Math.round(demand * 0.42 + growth * 0.22 + margin * 0.16 + shoppingResults.length * 3), 1, 99);
+
+  return {
+    name: first.title || keyword,
+    category: "Google Shopping",
+    channel: "Google Shopping",
+    price: avgPrice,
+    growth,
+    demand,
+    margin,
+    score,
+    rank,
+    listingCount: shoppingResults.length,
+    minPrice,
+    maxPrice,
+    avgPrice,
+    freeShippingRate,
+    topSeller: first.source || "Google Shopping",
+    sellerReputation:
+      first.rating || first.reviews ? `${first.rating || "s/r"} rating - ${first.reviews || 0} reviews` : "Sin detalle",
+    condition: first.second_hand_condition || "Sin detalle",
+    itemIds: shoppingResults.map((item) => item.product_id).filter(Boolean),
+    url: first.product_link || first.link || getTrendUrl(trend, site, keyword),
+    signal: `Tendencia #${rank} de Mercado Libre enriquecida con ${shoppingResults.length} resultados de Google Shopping.`,
   };
 }
 
@@ -287,8 +353,34 @@ export default async function handler(request, response) {
       }),
     );
 
-    const trendOnlyProducts = searches
-      .filter((entry) => !entry.item)
+    const missingEntries = searches.filter((entry) => !entry.item);
+    const shoppingCandidates = missingEntries.slice(0, SHOPPING_ENRICH_LIMIT);
+    const shoppingLookups = await Promise.all(
+      shoppingCandidates.map(async (entry) => ({
+        entry,
+        shoppingResults: await fetchSerpApiShopping(entry.keyword),
+      })),
+    );
+    const shoppingByKeyword = new Map(
+      shoppingLookups
+        .filter((lookup) => Array.isArray(lookup.shoppingResults) && lookup.shoppingResults.length)
+        .map((lookup) => [lookup.entry.keyword, lookup.shoppingResults]),
+    );
+
+    const shoppingProducts = shoppingLookups
+      .filter((lookup) => Array.isArray(lookup.shoppingResults) && lookup.shoppingResults.length)
+      .map((lookup) =>
+        buildShoppingProduct({
+          site,
+          trend: lookup.entry.trend,
+          keyword: lookup.entry.keyword,
+          rank: lookup.entry.rank,
+          shoppingResults: lookup.shoppingResults,
+        }),
+      );
+
+    const trendOnlyProducts = missingEntries
+      .filter((entry) => !shoppingByKeyword.has(entry.keyword))
       .map((entry) =>
         buildTrendOnlyProduct({
           site,
@@ -298,7 +390,7 @@ export default async function handler(request, response) {
         }),
       );
 
-    const products = [...enrichedProducts, ...trendOnlyProducts].sort((a, b) => a.rank - b.rank);
+    const products = [...enrichedProducts, ...shoppingProducts, ...trendOnlyProducts].sort((a, b) => a.rank - b.rank);
 
     response.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=3600");
     response.status(200).json({
@@ -308,8 +400,11 @@ export default async function handler(request, response) {
       diagnostics: {
         trends: rankedTrends.length,
         enriched: enrichedProducts.length,
+        googleShopping: shoppingProducts.length,
         trendOnly: trendOnlyProducts.length,
         searchLimit: SEARCH_LIMIT,
+        shoppingEnrichLimit: SHOPPING_ENRICH_LIMIT,
+        hasSerpApiKey: Boolean(process.env.SERPAPI_API_KEY),
       },
       products,
     });

@@ -53,6 +53,14 @@ Opciones:
 
 Estas fuentes sirven para comparar precios, tiendas, reviews y disponibilidad fuera de Mercado Libre.
 
+El proyecto soporta SerpApi de forma opcional. Configura en Vercel:
+
+```txt
+SERPAPI_API_KEY
+```
+
+Si Mercado Libre Trends funciona pero Mercado Libre Search responde 403, `/api/products` intenta enriquecer las primeras tendencias con Google Shopping usando SerpApi. Si no hay key, la app mantiene el comportamiento actual.
+
 ## Modelo de datos sugerido
 
 ```json
