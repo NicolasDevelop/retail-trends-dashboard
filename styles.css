@@ -187,6 +187,12 @@ h2 {
   cursor: pointer;
 }
 
+.icon-button:disabled,
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .icon-button {
   width: 42px;
   font-size: 20px;
@@ -385,6 +391,24 @@ th {
 
 td strong {
   color: var(--ink);
+}
+
+.row-link {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.row-link:hover {
+  text-decoration: underline;
+}
+
+.empty-text {
+  margin: 0;
+  color: var(--muted);
 }
 
 .score-pill {

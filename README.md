@@ -1,20 +1,20 @@
 # Retail Trends Radar
 
-Dashboard estatico para explorar productos tendencia, filtrar oportunidades de retail y calcular utilidad estimada por producto.
+Dashboard para explorar productos tendencia reales desde Mercado Libre, filtrar oportunidades de retail y calcular utilidad estimada por producto.
 
 ## Funciones
 
-- Ranking de productos por score comercial.
+- Ranking de productos generado desde Mercado Libre Trends + Search.
 - Filtros por busqueda, categoria, canal y score minimo.
 - Senales de tendencia por crecimiento de demanda.
 - Vista de oportunidades por categoria.
 - Calculadora de utilidad con costo, fee y envio.
 - Exportacion CSV.
-- Base preparada para conectar Mercado Libre, Google Shopping o fuentes propias.
+- Proxy serverless para consultar Mercado Libre sin exponer credenciales en el frontend.
 
 ## Ejecutar localmente
 
-Abre `index.html` en el navegador.
+La interfaz puede abrirse localmente, pero los datos reales requieren las funciones `/api/*`, por lo que el modo recomendado es Vercel.
 
 Tambien puedes servirlo con cualquier servidor estatico:
 
@@ -28,24 +28,31 @@ Luego visita `http://localhost:8080`.
 
 ### GitHub Pages
 
-1. Sube la carpeta a un repositorio.
-2. En GitHub, abre `Settings > Pages`.
-3. Elige la rama principal y la carpeta raiz.
-4. Publica.
+No recomendado para la version con datos reales. GitHub Pages no ejecuta `api/products.js`.
 
-### Netlify o Vercel
+### Vercel
 
-Usa deploy de sitio estatico. No requiere build command.
+Recomendado. No requiere build command.
 
-En Vercel tambien puedes usar `api/trends.js` como proxy para Mercado Libre. Si necesitas autenticacion, configura la variable `MELI_ACCESS_TOKEN` en el panel del proyecto.
+Endpoints disponibles:
 
-## Proximos pasos de datos reales
+- `/api/trends?site=MLC`
+- `/api/products?site=MLC&limit=12`
 
-1. Crear una funcion serverless `/api/trends` para llamar Mercado Libre Trends.
-2. Guardar snapshots diarios o semanales en una base simple.
-3. Calcular crecimiento comparando snapshots.
-4. Agregar un conector para Google Shopping via SerpApi o DataForSEO.
-5. Reemplazar el array demo de `app.js` por datos del endpoint propio.
+Mercado Libre puede responder `403` sin autenticacion. Configura `MELI_ACCESS_TOKEN` como variable de entorno en Vercel antes de usar datos reales.
+
+Variables de entorno:
+
+```txt
+MELI_ACCESS_TOKEN=tu_access_token_de_mercado_libre
+```
+
+## Proximos pasos
+
+1. Guardar snapshots diarios o semanales en una base simple.
+2. Calcular crecimiento real comparando snapshots.
+3. Agregar un conector para Google Shopping via SerpApi o DataForSEO.
+4. Agregar alertas por productos nuevos o crecimiento alto.
 
 ## Estructura
 
@@ -55,5 +62,7 @@ retail-trends-dashboard/
   styles.css
   app.js
   api-connectors.md
+  api/products.js
+  api/trends.js
   README.md
 ```

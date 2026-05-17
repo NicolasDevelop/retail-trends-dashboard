@@ -19,6 +19,10 @@ export default async function handler(request, response) {
     response.status(upstream.status).json({
       error: "Mercado Libre request failed",
       status: upstream.status,
+      message:
+        upstream.status === 403
+          ? "Mercado Libre rechazo la consulta. Configura MELI_ACCESS_TOKEN en Vercel."
+          : "No se pudo consultar Mercado Libre en este momento.",
     });
     return;
   }

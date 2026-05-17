@@ -4,6 +4,9 @@
   "functions": {
     "api/trends.js": {
       "maxDuration": 10
+    },
+    "api/products.js": {
+      "maxDuration": 10
     }
   }
 }

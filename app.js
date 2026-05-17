@@ -1,143 +1,13 @@
-const products = [
-  {
-    name: "Notebook gamer RTX 4060 16GB",
-    category: "Tecnologia",
-    channel: "Mercado Libre",
-    price: 899990,
-    growth: 42,
-    demand: 91,
-    margin: 18,
-    score: 94,
-    signal: "Alta busqueda semanal y ticket alto",
-  },
-  {
-    name: "Freidora de aire 6 litros",
-    category: "Hogar",
-    channel: "Mercado Libre",
-    price: 74990,
-    growth: 28,
-    demand: 84,
-    margin: 24,
-    score: 88,
-    signal: "Demanda recurrente con baja barrera de compra",
-  },
-  {
-    name: "Protector solar facial SPF 50",
-    category: "Belleza",
-    channel: "Google Shopping",
-    price: 12990,
-    growth: 34,
-    demand: 78,
-    margin: 36,
-    score: 86,
-    signal: "Temporalidad fuerte y margen saludable",
-  },
-  {
-    name: "Cafetera espresso automatica",
-    category: "Hogar",
-    channel: "Google Shopping",
-    price: 219990,
-    growth: 22,
-    demand: 72,
-    margin: 21,
-    score: 79,
-    signal: "Buen cruce entre ticket y busqueda",
-  },
-  {
-    name: "Smartwatch AMOLED GPS",
-    category: "Tecnologia",
-    channel: "Mercado Libre",
-    price: 59990,
-    growth: 19,
-    demand: 75,
-    margin: 17,
-    score: 76,
-    signal: "Competencia alta, rotacion estable",
-  },
-  {
-    name: "Set organizadores cocina",
-    category: "Hogar",
-    channel: "TikTok Shop",
-    price: 15990,
-    growth: 51,
-    demand: 68,
-    margin: 41,
-    score: 83,
-    signal: "Impulso social y compra visual",
-  },
-  {
-    name: "Creatina monohidratada 300g",
-    category: "Salud",
-    channel: "Mercado Libre",
-    price: 18990,
-    growth: 31,
-    demand: 81,
-    margin: 27,
-    score: 85,
-    signal: "Alta recurrencia y comparacion por precio",
-  },
-  {
-    name: "Silla ergonomica home office",
-    category: "Oficina",
-    channel: "Google Shopping",
-    price: 129990,
-    growth: 16,
-    demand: 66,
-    margin: 20,
-    score: 68,
-    signal: "Demanda estable, sensibilidad a envio",
-  },
-  {
-    name: "Aspiradora robot mopa",
-    category: "Hogar",
-    channel: "Mercado Libre",
-    price: 189990,
-    growth: 25,
-    demand: 73,
-    margin: 16,
-    score: 74,
-    signal: "Interes sostenido por automatizacion",
-  },
-  {
-    name: "Audifonos bluetooth cancelacion ruido",
-    category: "Tecnologia",
-    channel: "Google Shopping",
-    price: 45990,
-    growth: 21,
-    demand: 70,
-    margin: 23,
-    score: 72,
-    signal: "Oferta amplia, oportunidad en nichos",
-  },
-  {
-    name: "Mochila antirrobo USB",
-    category: "Accesorios",
-    channel: "Mercado Libre",
-    price: 24990,
-    growth: 13,
-    demand: 58,
-    margin: 32,
-    score: 61,
-    signal: "Utilidad clara, crecimiento moderado",
-  },
-  {
-    name: "Kit luces LED escritorio",
-    category: "Oficina",
-    channel: "TikTok Shop",
-    price: 11990,
-    growth: 47,
-    demand: 63,
-    margin: 39,
-    score: 77,
-    signal: "Buen producto gancho para bundles",
-  },
-];
+let products = [];
 
 const state = {
   query: "",
   category: "Todas",
   channel: "Todos",
   minScore: 35,
+  loading: true,
+  error: "",
+  source: "",
 };
 
 const money = new Intl.NumberFormat("es-CL", {
@@ -168,16 +38,18 @@ const els = {
   feeRate: document.querySelector("#feeRate"),
   shippingCost: document.querySelector("#shippingCost"),
   profitOutput: document.querySelector("#profitOutput"),
+  sourceText: document.querySelector("#sourceText"),
+  liveStatus: document.querySelector("#liveStatus"),
 };
 
 function unique(values) {
-  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-function fillSelect(select, values, firstLabel) {
-  select.innerHTML = [firstLabel, ...values]
-    .map((value) => `<option value="${value}">${value}</option>`)
-    .join("");
+function fillSelect(select, values, firstLabel, currentValue) {
+  const options = [firstLabel, ...values];
+  select.innerHTML = options.map((value) => `<option value="${value}">${value}</option>`).join("");
+  select.value = options.includes(currentValue) ? currentValue : firstLabel;
 }
 
 function filteredProducts() {
@@ -201,6 +73,13 @@ function average(items, key) {
   return items.reduce((total, item) => total + item[key], 0) / items.length;
 }
 
+function setLoading(isLoading) {
+  state.loading = isLoading;
+  els.refreshButton.disabled = isLoading;
+  els.exportButton.disabled = isLoading || !products.length;
+  els.refreshButton.textContent = isLoading ? "..." : "R";
+}
+
 function renderMetrics(items) {
   els.metricProducts.textContent = items.length;
   els.metricScore.textContent = Math.round(average(items, "score"));
@@ -209,6 +88,26 @@ function renderMetrics(items) {
 }
 
 function renderRows(items) {
+  if (state.loading) {
+    els.count.textContent = "Cargando Mercado Libre";
+    els.rows.innerHTML = `
+      <tr>
+        <td colspan="7"><strong>Consultando tendencias y publicaciones reales...</strong></td>
+      </tr>
+    `;
+    return;
+  }
+
+  if (state.error) {
+    els.count.textContent = "Sin datos";
+    els.rows.innerHTML = `
+      <tr>
+        <td colspan="7"><strong>${state.error}</strong></td>
+      </tr>
+    `;
+    return;
+  }
+
   els.count.textContent = `${items.length} resultados`;
   if (!items.length) {
     els.rows.innerHTML = `
@@ -223,12 +122,15 @@ function renderRows(items) {
     .map(
       (product) => `
         <tr>
-          <td><strong>${product.name}</strong></td>
+          <td>
+            <strong>${product.name}</strong>
+            <a class="row-link" href="${product.url}" target="_blank" rel="noreferrer">Ver fuente</a>
+          </td>
           <td>${product.category}</td>
           <td>${product.channel}</td>
           <td>${money.format(product.price)}</td>
-          <td>${product.demand}/100 - +${product.growth}%</td>
-          <td>${product.margin}%</td>
+          <td>${product.demand}/100 - indice ${product.growth}%</td>
+          <td>${product.margin}% estimado</td>
           <td><span class="score-pill">${product.score}</span></td>
         </tr>
       `,
@@ -237,10 +139,33 @@ function renderRows(items) {
 }
 
 function renderSignals(items) {
-  els.updatedAt.textContent = new Date().toLocaleString("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  els.updatedAt.textContent = state.source || "";
+
+  if (state.loading) {
+    els.signals.innerHTML = `
+      <article class="signal">
+        <div>
+          <strong>Conectando con Mercado Libre</strong>
+          <span>La API esta armando el ranking con tendencias y busquedas reales.</span>
+        </div>
+        <span class="badge">live</span>
+      </article>
+    `;
+    return;
+  }
+
+  if (state.error) {
+    els.signals.innerHTML = `
+      <article class="signal">
+        <div>
+          <strong>No se pudo cargar la fuente real</strong>
+          <span>${state.error}</span>
+        </div>
+        <span class="badge">api</span>
+      </article>
+    `;
+    return;
+  }
 
   els.signals.innerHTML = items
     .slice(0, 5)
@@ -251,7 +176,7 @@ function renderSignals(items) {
             <strong>${product.name}</strong>
             <span>${product.signal}</span>
           </div>
-          <span class="badge">+${product.growth}%</span>
+          <span class="badge">#${product.rank}</span>
         </article>
       `,
     )
@@ -282,6 +207,20 @@ function renderBars(items) {
       `;
     })
     .join("");
+
+  if (!items.length) {
+    els.bars.innerHTML = `<p class="empty-text">Sin categorias para mostrar.</p>`;
+  }
+}
+
+function renderSourceStatus() {
+  if (els.sourceText) {
+    els.sourceText.textContent = state.source || "Mercado Libre Chile";
+  }
+
+  if (els.liveStatus) {
+    els.liveStatus.textContent = state.error ? "API no disponible" : "Mercado Libre en vivo";
+  }
 }
 
 function render() {
@@ -290,6 +229,7 @@ function render() {
   renderRows(items);
   renderSignals(items);
   renderBars(items);
+  renderSourceStatus();
 }
 
 function calculateProfit() {
@@ -304,7 +244,7 @@ function calculateProfit() {
 }
 
 function exportCsv() {
-  const headers = ["producto", "categoria", "canal", "precio", "demanda", "crecimiento", "margen", "score"];
+  const headers = ["producto", "categoria", "canal", "precio", "demanda", "indice", "margen", "score", "url"];
   const rows = filteredProducts().map((product) => [
     product.name,
     product.category,
@@ -314,6 +254,7 @@ function exportCsv() {
     product.growth,
     product.margin,
     product.score,
+    product.url,
   ]);
   const csv = [headers, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
@@ -327,9 +268,47 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
+function refreshFilters() {
+  fillSelect(els.category, unique(products.map((product) => product.category)), "Todas", state.category);
+  fillSelect(els.channel, unique(products.map((product) => product.channel)), "Todos", state.channel);
+}
+
+async function loadProducts() {
+  setLoading(true);
+  state.error = "";
+  render();
+
+  try {
+    const response = await fetch("/api/products?site=MLC&limit=12");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.message || payload.detail || `La API respondio con estado ${response.status}.`);
+    }
+
+    const payload = await response.json();
+    products = Array.isArray(payload.products) ? payload.products : [];
+    state.source = payload.source || "Mercado Libre Chile";
+    state.category = "Todas";
+    state.channel = "Todos";
+    refreshFilters();
+
+    if (!products.length) {
+      state.error = "Mercado Libre no devolvio productos para rankear en este momento.";
+    }
+  } catch (error) {
+    products = [];
+    refreshFilters();
+    state.error =
+      "No se pudo consumir Mercado Libre. En Vercel configura MELI_ACCESS_TOKEN y vuelve a desplegar.";
+    console.error(error);
+  } finally {
+    setLoading(false);
+    render();
+  }
+}
+
 function init() {
-  fillSelect(els.category, unique(products.map((product) => product.category)), "Todas");
-  fillSelect(els.channel, unique(products.map((product) => product.channel)), "Todos");
+  refreshFilters();
 
   els.search.addEventListener("input", (event) => {
     state.query = event.target.value;
@@ -349,13 +328,13 @@ function init() {
     render();
   });
   els.exportButton.addEventListener("click", exportCsv);
-  els.refreshButton.addEventListener("click", render);
+  els.refreshButton.addEventListener("click", loadProducts);
   [els.salePrice, els.costPrice, els.feeRate, els.shippingCost].forEach((input) => {
     input.addEventListener("input", calculateProfit);
   });
 
-  render();
   calculateProfit();
+  loadProducts();
 }
 
 init();

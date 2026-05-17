@@ -1,6 +1,6 @@
 # API connectors
 
-Esta app funciona como dashboard estatico, pero esta pensada para conectarse a datos reales con un proxy serverless.
+Esta app consume datos reales desde funciones serverless cuando esta desplegada en Vercel.
 
 ## Mercado Libre
 
@@ -22,11 +22,20 @@ Sitios frecuentes:
 
 No pongas tokens privados en el frontend. Si un endpoint requiere `Authorization: Bearer`, usa una funcion serverless en Vercel, Netlify o Cloudflare Workers.
 
-Este proyecto incluye un ejemplo para Vercel en `api/trends.js`:
+En este proyecto el token se lee desde:
+
+```txt
+MELI_ACCESS_TOKEN
+```
+
+Este proyecto incluye dos endpoints para Vercel:
 
 ```txt
 /api/trends?site=MLC
+/api/products?site=MLC&limit=12
 ```
+
+`/api/products` combina Trends y Search para construir el ranking que consume el frontend.
 
 ## Google Shopping / SERP
 
