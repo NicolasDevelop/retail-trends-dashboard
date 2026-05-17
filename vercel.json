@@ -7,6 +7,12 @@
     },
     "api/products.js": {
       "maxDuration": 10
+    },
+    "api/auth/start.js": {
+      "maxDuration": 10
+    },
+    "api/auth/callback.js": {
+      "maxDuration": 10
     }
   }
 }

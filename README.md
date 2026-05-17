@@ -38,14 +38,30 @@ Endpoints disponibles:
 
 - `/api/trends?site=MLC`
 - `/api/products?site=MLC&limit=12`
+- `/api/auth/start`
+- `/api/auth/callback`
 
 Mercado Libre puede responder `403` sin autenticacion. Configura `MELI_ACCESS_TOKEN` como variable de entorno en Vercel antes de usar datos reales.
 
 Variables de entorno:
 
 ```txt
+MELI_CLIENT_ID=client_id_de_tu_app
+MELI_CLIENT_SECRET=client_secret_de_tu_app
+MELI_REDIRECT_URI=https://retail-trends-dashboard.vercel.app/api/auth/callback
 MELI_ACCESS_TOKEN=tu_access_token_de_mercado_libre
 ```
+
+Flujo para obtener token:
+
+1. En Mercado Libre Developers configura Redirect URI:
+   `https://retail-trends-dashboard.vercel.app/api/auth/callback`
+2. En Vercel agrega `MELI_CLIENT_ID`, `MELI_CLIENT_SECRET` y `MELI_REDIRECT_URI`.
+3. Haz redeploy.
+4. Abre `/api/auth/start`.
+5. Autoriza la app.
+6. Copia `MELI_ACCESS_TOKEN` desde la pantalla de callback a Vercel.
+7. Haz redeploy nuevamente.
 
 ## Proximos pasos
 
@@ -64,5 +80,7 @@ retail-trends-dashboard/
   api-connectors.md
   api/products.js
   api/trends.js
+  api/auth/start.js
+  api/auth/callback.js
   README.md
 ```
