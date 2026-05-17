@@ -81,9 +81,10 @@ function setLoading(isLoading) {
 }
 
 function renderMetrics(items) {
+  const pricedItems = items.filter((item) => item.price > 0);
   els.metricProducts.textContent = items.length;
   els.metricScore.textContent = Math.round(average(items, "score"));
-  els.metricPrice.textContent = money.format(average(items, "price"));
+  els.metricPrice.textContent = pricedItems.length ? money.format(average(pricedItems, "price")) : "Sin detalle";
   els.metricGrowth.textContent = `${Math.round(average(items, "growth"))}%`;
 }
 
@@ -128,9 +129,9 @@ function renderRows(items) {
           </td>
           <td>${product.category}</td>
           <td>${product.channel}</td>
-          <td>${money.format(product.price)}</td>
+          <td>${product.price > 0 ? money.format(product.price) : "Sin detalle"}</td>
           <td>${product.demand}/100 - indice ${product.growth}%</td>
-          <td>${product.margin}% estimado</td>
+          <td>${product.margin > 0 ? `${product.margin}% estimado` : "Sin detalle"}</td>
           <td><span class="score-pill">${product.score}</span></td>
         </tr>
       `,

@@ -107,10 +107,31 @@ async function fetchCategoryNames(site, categoryIds) {
 }
 
 function estimateMargin(price) {
+  if (!price) return 0;
   if (price <= 20000) return 32;
   if (price <= 80000) return 24;
   if (price <= 250000) return 18;
   return 14;
+}
+
+function buildTrendOnlyProduct({ site, trend, keyword, rank }) {
+  const demand = clamp(100 - rank * 4, 48, 96);
+  const growth = clamp(60 - rank * 2, 12, 92);
+  const score = clamp(Math.round(demand * 0.7 + growth * 0.3), 1, 99);
+
+  return {
+    name: keyword,
+    category: "Tendencia",
+    channel: "Mercado Libre Trends",
+    price: 0,
+    growth,
+    demand,
+    margin: 0,
+    score,
+    rank,
+    url: getTrendUrl(trend, site, keyword),
+    signal: `Tendencia #${rank} detectada por Mercado Libre. Search no entrego detalle de publicaciones.`,
+  };
 }
 
 function buildProduct({ site, trend, item, rank, categoryName, resultCount }) {
@@ -152,14 +173,24 @@ export default async function handler(request, response) {
 
     const searches = await Promise.all(
       rankedTrends.map(async (entry) => {
-        const url = `https://api.mercadolibre.com/sites/${site}/search?q=${encodeURIComponent(entry.keyword)}&limit=5`;
-        const data = await fetchJson(url);
-        const item = Array.isArray(data.results) ? data.results[0] : null;
-        return {
-          ...entry,
-          item,
-          resultCount: data.paging?.total || data.results?.length || 0,
-        };
+        try {
+          const url = `https://api.mercadolibre.com/sites/${site}/search?q=${encodeURIComponent(entry.keyword)}&limit=5`;
+          const data = await fetchJson(url);
+          const item = Array.isArray(data.results) ? data.results[0] : null;
+          return {
+            ...entry,
+            item,
+            resultCount: data.paging?.total || data.results?.length || 0,
+            searchStatus: "ok",
+          };
+        } catch (error) {
+          return {
+            ...entry,
+            item: null,
+            resultCount: 0,
+            searchStatus: `blocked:${error.status || 0}`,
+          };
+        }
       }),
     );
 
@@ -169,7 +200,7 @@ export default async function handler(request, response) {
       validSearches.map((entry) => entry.item.category_id),
     );
 
-    const products = validSearches.map((entry) =>
+    const enrichedProducts = validSearches.map((entry) =>
       buildProduct({
         trend: entry.trend,
         site,
@@ -180,11 +211,29 @@ export default async function handler(request, response) {
       }),
     );
 
+    const trendOnlyProducts = searches
+      .filter((entry) => !entry.item)
+      .map((entry) =>
+        buildTrendOnlyProduct({
+          site,
+          trend: entry.trend,
+          keyword: entry.keyword,
+          rank: entry.rank,
+        }),
+      );
+
+    const products = [...enrichedProducts, ...trendOnlyProducts].sort((a, b) => a.rank - b.rank);
+
     response.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=3600");
     response.status(200).json({
       site,
       source: `${SITE_NAMES[site] || site} - ${trendResult.sourceMode}`,
       generatedAt: new Date().toISOString(),
+      diagnostics: {
+        trends: rankedTrends.length,
+        enriched: enrichedProducts.length,
+        trendOnly: trendOnlyProducts.length,
+      },
       products,
     });
   } catch (error) {
