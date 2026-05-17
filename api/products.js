@@ -1,4 +1,4 @@
-import { getMeliHeaders } from "./lib/meli.js";
+import { fetchMeliJson } from "./lib/meli.js";
 
 const SITE_IDS = new Set(["MLA", "MLB", "MLC", "MCO", "MLM", "MPE", "MLU"]);
 
@@ -46,18 +46,8 @@ function getTrendUrl(trend, site, keyword) {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url, {
-    headers: await getMeliHeaders(),
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-
-  if (!response.ok) {
-    const error = new Error(`Mercado Libre responded ${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
-
-  return response.json();
+  const { payload } = await fetchMeliJson(url);
+  return payload;
 }
 
 async function fetchTrends(site, limit) {

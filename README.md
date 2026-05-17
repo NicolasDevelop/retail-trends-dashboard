@@ -40,6 +40,7 @@ Endpoints disponibles:
 - `/api/products?site=MLC&limit=12`
 - `/api/auth/start`
 - `/api/auth/callback`
+- `/api/auth/refresh`
 - `/api/debug/meli`
 
 Mercado Libre puede responder `403` sin autenticacion. La API intenta usar `MELI_ACCESS_TOKEN`; si no existe, intenta generar un token con `MELI_CLIENT_ID` y `MELI_CLIENT_SECRET`.
@@ -51,6 +52,8 @@ MELI_CLIENT_ID=client_id_de_tu_app
 MELI_CLIENT_SECRET=client_secret_de_tu_app
 MELI_REDIRECT_URI=https://retail-trends-dashboard.vercel.app/api/auth/callback
 MELI_ACCESS_TOKEN=opcional_si_ya_generaste_un_token_oauth
+MELI_REFRESH_TOKEN=refresh_token_generado_por_oauth
+MELI_TOKEN_EXPIRES_AT=fecha_iso_informativa
 ```
 
 Flujo para obtener token:
@@ -63,6 +66,15 @@ Flujo para obtener token:
 5. Autoriza la app.
 6. Copia `MELI_ACCESS_TOKEN` desde la pantalla de callback a Vercel.
 7. Haz redeploy nuevamente.
+
+Renovar token:
+
+1. Abre `/api/auth/refresh`.
+2. Copia `MELI_ACCESS_TOKEN`, `MELI_REFRESH_TOKEN` y `MELI_TOKEN_EXPIRES_AT`.
+3. Actualiza esas variables en Vercel.
+4. Haz redeploy.
+
+La API tambien intenta refrescar automaticamente cuando Mercado Libre responde 401 o 403. En serverless no puede guardar variables de entorno por si sola, asi que el endpoint `/api/auth/refresh` sirve para actualizar Vercel manualmente cuando sea necesario.
 
 ## Proximos pasos
 
@@ -83,5 +95,6 @@ retail-trends-dashboard/
   api/trends.js
   api/auth/start.js
   api/auth/callback.js
+  api/auth/refresh.js
   README.md
 ```

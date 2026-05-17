@@ -13,6 +13,7 @@ function renderTokenPage(payload, redirectUri) {
   const accessToken = escapeHtml(payload.access_token || "");
   const refreshToken = escapeHtml(payload.refresh_token || "");
   const expiresIn = escapeHtml(payload.expires_in || "");
+  const expiresAt = escapeHtml(new Date(Date.now() + Number(payload.expires_in || 0) * 1000).toISOString());
 
   return `<!doctype html>
 <html lang="es">
@@ -36,6 +37,7 @@ function renderTokenPage(payload, redirectUri) {
       <p class="warn">Copia estos valores a Vercel como variables de entorno. No los publiques ni los subas a GitHub.</p>
       <pre><code>MELI_ACCESS_TOKEN=${accessToken}
 MELI_REFRESH_TOKEN=${refreshToken}
+MELI_TOKEN_EXPIRES_AT=${expiresAt}
 MELI_REDIRECT_URI=${escapeHtml(redirectUri)}</code></pre>
       <p>Expira en segundos: <strong>${expiresIn}</strong>. Despues de guardar las variables en Vercel, haz redeploy del proyecto.</p>
     </main>
