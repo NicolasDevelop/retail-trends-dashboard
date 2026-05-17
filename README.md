@@ -40,6 +40,7 @@ Endpoints disponibles:
 - `/api/products?site=MLC&limit=12`
 - `/api/auth/start`
 - `/api/auth/callback`
+- `/api/debug/meli`
 
 Mercado Libre puede responder `403` sin autenticacion. La API intenta usar `MELI_ACCESS_TOKEN`; si no existe, intenta generar un token con `MELI_CLIENT_ID` y `MELI_CLIENT_SECRET`.
 

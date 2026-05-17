@@ -13,6 +13,23 @@ const SITE_NAMES = {
 };
 
 const REQUEST_TIMEOUT_MS = 8000;
+const FALLBACK_KEYWORDS = [
+  "freidora de aire",
+  "notebook",
+  "celular",
+  "smartwatch",
+  "audifonos bluetooth",
+  "cafetera",
+  "protector solar",
+  "aspiradora robot",
+  "silla ergonomica",
+  "creatina",
+  "monitor gamer",
+  "impresora",
+  "zapatillas",
+  "mochila",
+  "tablet",
+];
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
@@ -41,6 +58,36 @@ async function fetchJson(url) {
   }
 
   return response.json();
+}
+
+async function fetchTrends(site, limit) {
+  try {
+    const trends = await fetchJson(`https://api.mercadolibre.com/trends/${site}`);
+    return {
+      sourceMode: "Mercado Libre Trends + Search",
+      entries: (Array.isArray(trends) ? trends : [])
+        .map((trend, index) => ({
+          trend,
+          keyword: getTrendKeyword(trend),
+          rank: index + 1,
+        }))
+        .filter((entry) => entry.keyword)
+        .slice(0, limit),
+    };
+  } catch (error) {
+    if (error.status !== 403) {
+      throw error;
+    }
+
+    return {
+      sourceMode: "Mercado Libre Search",
+      entries: FALLBACK_KEYWORDS.slice(0, limit).map((keyword, index) => ({
+        trend: { keyword },
+        keyword,
+        rank: index + 1,
+      })),
+    };
+  }
 }
 
 async function fetchCategoryNames(site, categoryIds) {
@@ -100,15 +147,8 @@ export default async function handler(request, response) {
   }
 
   try {
-    const trends = await fetchJson(`https://api.mercadolibre.com/trends/${site}`);
-    const rankedTrends = (Array.isArray(trends) ? trends : [])
-      .map((trend, index) => ({
-        trend,
-        keyword: getTrendKeyword(trend),
-        rank: index + 1,
-      }))
-      .filter((entry) => entry.keyword)
-      .slice(0, limit);
+    const trendResult = await fetchTrends(site, limit);
+    const rankedTrends = trendResult.entries;
 
     const searches = await Promise.all(
       rankedTrends.map(async (entry) => {
@@ -143,7 +183,7 @@ export default async function handler(request, response) {
     response.setHeader("Cache-Control", "s-maxage=1800, stale-while-revalidate=3600");
     response.status(200).json({
       site,
-      source: SITE_NAMES[site] || site,
+      source: `${SITE_NAMES[site] || site} - ${trendResult.sourceMode}`,
       generatedAt: new Date().toISOString(),
       products,
     });

@@ -13,6 +13,9 @@
     },
     "api/auth/callback.js": {
       "maxDuration": 10
+    },
+    "api/debug/meli.js": {
+      "maxDuration": 10
     }
   }
 }
