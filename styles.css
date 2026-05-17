@@ -371,7 +371,7 @@ td {
 
 table {
   width: 100%;
-  min-width: 820px;
+  min-width: 1180px;
   border-collapse: collapse;
 }
 
@@ -400,6 +400,13 @@ td strong {
   font-size: 12px;
   font-weight: 700;
   text-decoration: none;
+}
+
+.cell-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .row-link:hover {

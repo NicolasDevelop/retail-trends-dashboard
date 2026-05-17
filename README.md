@@ -5,12 +5,14 @@ Dashboard para explorar productos tendencia reales desde Mercado Libre, filtrar 
 ## Funciones
 
 - Ranking de productos generado desde Mercado Libre Trends + Search.
+- Enriquecimiento con publicaciones, precios, envio gratis, seller y reputacion cuando Mercado Libre lo permite.
 - Filtros por busqueda, categoria, canal y score minimo.
 - Senales de tendencia por crecimiento de demanda.
 - Vista de oportunidades por categoria.
 - Calculadora de utilidad con costo, fee y envio.
 - Exportacion CSV.
 - Proxy serverless para consultar Mercado Libre sin exponer credenciales en el frontend.
+- Fallback tolerante: si un endpoint de enriquecimiento falla, el dashboard conserva tendencias disponibles.
 
 ## Ejecutar localmente
 

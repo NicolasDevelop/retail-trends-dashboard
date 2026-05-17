@@ -13,6 +13,7 @@ const SITE_NAMES = {
 };
 
 const REQUEST_TIMEOUT_MS = 8000;
+const SEARCH_LIMIT = 5;
 const FALLBACK_KEYWORDS = [
   "freidora de aire",
   "notebook",
@@ -104,6 +105,65 @@ function estimateMargin(price) {
   return 14;
 }
 
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function getSellerReputation(seller) {
+  const level = seller?.seller_reputation?.level_id || "";
+  const powerSeller = seller?.seller_reputation?.power_seller_status || "";
+  return powerSeller || level || "Sin detalle";
+}
+
+function getShippingStats(items) {
+  const freeShipping = items.filter((item) => item.shipping?.free_shipping).length;
+  return {
+    freeShipping,
+    freeShippingRate: items.length ? Math.round((freeShipping / items.length) * 100) : 0,
+  };
+}
+
+async function safeFetchJson(url) {
+  try {
+    return await fetchJson(url);
+  } catch {
+    return null;
+  }
+}
+
+async function enrichSearchEntry(site, entry, data) {
+  const results = Array.isArray(data.results) ? data.results.slice(0, SEARCH_LIMIT) : [];
+  const item = results[0] || null;
+
+  if (!item) {
+    return {
+      ...entry,
+      item: null,
+      items: [],
+      resultCount: data.paging?.total || 0,
+      seller: null,
+      searchStatus: "empty",
+    };
+  }
+
+  const itemIds = results.map((result) => result.id).filter(Boolean);
+  const detailedItems = await Promise.all(
+    itemIds.map((id) => safeFetchJson(`https://api.mercadolibre.com/items/${id}`)),
+  );
+  const usableDetails = detailedItems.filter(Boolean);
+  const seller = item.seller?.id ? await safeFetchJson(`https://api.mercadolibre.com/users/${item.seller.id}`) : null;
+
+  return {
+    ...entry,
+    item: usableDetails[0] || item,
+    items: usableDetails.length ? usableDetails : results,
+    seller,
+    resultCount: data.paging?.total || data.results?.length || 0,
+    searchStatus: "ok",
+  };
+}
+
 function buildTrendOnlyProduct({ site, trend, keyword, rank }) {
   const demand = clamp(100 - rank * 4, 48, 96);
   const growth = clamp(60 - rank * 2, 12, 92);
@@ -119,19 +179,38 @@ function buildTrendOnlyProduct({ site, trend, keyword, rank }) {
     margin: 0,
     score,
     rank,
+    listingCount: 0,
+    minPrice: 0,
+    maxPrice: 0,
+    avgPrice: 0,
+    freeShippingRate: 0,
+    topSeller: "Sin detalle",
+    sellerReputation: "Sin detalle",
+    condition: "Sin detalle",
+    itemIds: [],
     url: getTrendUrl(trend, site, keyword),
     signal: `Tendencia #${rank} detectada por Mercado Libre. Search no entrego detalle de publicaciones.`,
   };
 }
 
-function buildProduct({ site, trend, item, rank, categoryName, resultCount }) {
+function buildProduct({ site, trend, item, items, seller, rank, categoryName, resultCount }) {
   const keyword = getTrendKeyword(trend);
-  const price = Math.round(Number(item.price || 0));
+  const prices = items.map((entry) => Number(entry.price || 0)).filter((price) => price > 0);
+  const avgPrice = Math.round(average(prices));
+  const minPrice = prices.length ? Math.min(...prices) : 0;
+  const maxPrice = prices.length ? Math.max(...prices) : 0;
+  const price = Math.round(Number(item.price || avgPrice || 0));
+  const shipping = getShippingStats(items);
   const demand = clamp(100 - rank * 4, 48, 96);
   const supplySignal = clamp(Math.round(Math.log10(Math.max(resultCount, 1)) * 18), 8, 35);
   const growth = clamp(45 - rank * 2 + supplySignal, 12, 92);
   const margin = estimateMargin(price);
-  const score = clamp(Math.round(demand * 0.45 + growth * 0.25 + margin * 0.2 + supplySignal * 0.1), 1, 99);
+  const shippingScore = shipping.freeShippingRate / 2;
+  const score = clamp(
+    Math.round(demand * 0.38 + growth * 0.22 + margin * 0.15 + supplySignal * 0.15 + shippingScore * 0.1),
+    1,
+    99,
+  );
 
   return {
     name: item.title || keyword,
@@ -143,8 +222,17 @@ function buildProduct({ site, trend, item, rank, categoryName, resultCount }) {
     margin,
     score,
     rank,
+    listingCount: resultCount,
+    minPrice,
+    maxPrice,
+    avgPrice,
+    freeShippingRate: shipping.freeShippingRate,
+    topSeller: seller?.nickname || "Sin detalle",
+    sellerReputation: getSellerReputation(seller),
+    condition: item.condition || "Sin detalle",
+    itemIds: items.map((entry) => entry.id).filter(Boolean),
     url: item.permalink || getTrendUrl(trend, site, keyword),
-    signal: `Tendencia #${rank} en Mercado Libre; ${resultCount.toLocaleString("es-CL")} publicaciones relacionadas.`,
+    signal: `Tendencia #${rank}; ${resultCount.toLocaleString("es-CL")} publicaciones, precio promedio ${avgPrice ? avgPrice.toLocaleString("es-CL") : "sin detalle"} CLP.`,
   };
 }
 
@@ -164,19 +252,15 @@ export default async function handler(request, response) {
     const searches = await Promise.all(
       rankedTrends.map(async (entry) => {
         try {
-          const url = `https://api.mercadolibre.com/sites/${site}/search?q=${encodeURIComponent(entry.keyword)}&limit=5`;
+          const url = `https://api.mercadolibre.com/sites/${site}/search?q=${encodeURIComponent(entry.keyword)}&limit=${SEARCH_LIMIT}`;
           const data = await fetchJson(url);
-          const item = Array.isArray(data.results) ? data.results[0] : null;
-          return {
-            ...entry,
-            item,
-            resultCount: data.paging?.total || data.results?.length || 0,
-            searchStatus: "ok",
-          };
+          return enrichSearchEntry(site, entry, data);
         } catch (error) {
           return {
             ...entry,
             item: null,
+            items: [],
+            seller: null,
             resultCount: 0,
             searchStatus: `blocked:${error.status || 0}`,
           };
@@ -195,6 +279,8 @@ export default async function handler(request, response) {
         trend: entry.trend,
         site,
         item: entry.item,
+        items: entry.items,
+        seller: entry.seller,
         rank: entry.rank,
         resultCount: entry.resultCount,
         categoryName: categoryNames[entry.item.category_id],
@@ -223,6 +309,7 @@ export default async function handler(request, response) {
         trends: rankedTrends.length,
         enriched: enrichedProducts.length,
         trendOnly: trendOnlyProducts.length,
+        searchLimit: SEARCH_LIMIT,
       },
       products,
     });

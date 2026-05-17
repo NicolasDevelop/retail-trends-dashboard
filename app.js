@@ -93,7 +93,7 @@ function renderRows(items) {
     els.count.textContent = "Cargando Mercado Libre";
     els.rows.innerHTML = `
       <tr>
-        <td colspan="7"><strong>Consultando tendencias y publicaciones reales...</strong></td>
+        <td colspan="10"><strong>Consultando tendencias y publicaciones reales...</strong></td>
       </tr>
     `;
     return;
@@ -103,7 +103,7 @@ function renderRows(items) {
     els.count.textContent = "Sin datos";
     els.rows.innerHTML = `
       <tr>
-        <td colspan="7"><strong>${state.error}</strong></td>
+        <td colspan="10"><strong>${state.error}</strong></td>
       </tr>
     `;
     return;
@@ -113,7 +113,7 @@ function renderRows(items) {
   if (!items.length) {
     els.rows.innerHTML = `
       <tr>
-        <td colspan="7"><strong>No hay productos con esos filtros.</strong></td>
+        <td colspan="10"><strong>No hay productos con esos filtros.</strong></td>
       </tr>
     `;
     return;
@@ -130,6 +130,15 @@ function renderRows(items) {
           <td>${product.category}</td>
           <td>${product.channel}</td>
           <td>${product.price > 0 ? money.format(product.price) : "Sin detalle"}</td>
+          <td>
+            ${product.listingCount ? product.listingCount.toLocaleString("es-CL") : "Sin detalle"}
+            ${product.minPrice && product.maxPrice ? `<span class="cell-note">${money.format(product.minPrice)} - ${money.format(product.maxPrice)}</span>` : ""}
+          </td>
+          <td>${product.freeShippingRate ? `${product.freeShippingRate}%` : "Sin detalle"}</td>
+          <td>
+            ${product.topSeller || "Sin detalle"}
+            <span class="cell-note">${product.sellerReputation || "Sin reputacion"}</span>
+          </td>
           <td>${product.demand}/100 - indice ${product.growth}%</td>
           <td>${product.margin > 0 ? `${product.margin}% estimado` : "Sin detalle"}</td>
           <td><span class="score-pill">${product.score}</span></td>
@@ -245,12 +254,38 @@ function calculateProfit() {
 }
 
 function exportCsv() {
-  const headers = ["producto", "categoria", "canal", "precio", "demanda", "indice", "margen", "score", "url"];
+  const headers = [
+    "producto",
+    "categoria",
+    "canal",
+    "precio",
+    "precio_minimo",
+    "precio_maximo",
+    "precio_promedio",
+    "publicaciones",
+    "envio_gratis_pct",
+    "seller",
+    "reputacion_seller",
+    "condicion",
+    "demanda",
+    "indice",
+    "margen",
+    "score",
+    "url",
+  ];
   const rows = filteredProducts().map((product) => [
     product.name,
     product.category,
     product.channel,
     product.price,
+    product.minPrice || 0,
+    product.maxPrice || 0,
+    product.avgPrice || 0,
+    product.listingCount || 0,
+    product.freeShippingRate || 0,
+    product.topSeller || "",
+    product.sellerReputation || "",
+    product.condition || "",
     product.demand,
     product.growth,
     product.margin,
